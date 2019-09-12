@@ -1,0 +1,68 @@
+<div class="container">
+  <div class="left">
+    <h2>自動で録音が始まるからつぶやいてみてね</h2>
+    <button id="switch-btn" class="btn-square">stop</button>
+    <div id="result-div"></div>
+  </div>
+  <div class="right">
+    <a class="twitter-timeline" data-width="360" data-height="720" href="https://twitter.com/RealTweet_Joe?ref_src=twsrc%5Etfw">Tweets by RealTweet_Joe</a> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+  </div>
+</div>
+
+<script>
+  const switchBtn = document.querySelector('#switch-btn');
+  const resultDiv = document.querySelector('#result-div');
+
+  SpeechRecognition = webkitSpeechRecognition || SpeechRecognition;
+  let recognition = new SpeechRecognition();
+
+  recognition.lang = 'ja-JP';
+  recognition.interimResults = true;
+  recognition.continuous = true;
+
+  let finalTranscript = ''; // 確定した(黒の)認識結果
+
+  recognition.onresult = (event) => {
+    resultDiv.innerHTML = '';
+
+    let interimTranscript = ''; // 暫定(灰色)の認識結果
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      let transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        finalTranscript += transcript;
+        resultDiv.innerHTML = finalTranscript;
+        if (finalTranscript.length >= 3 && finalTranscript.length <= 20) {
+          $.ajax({url: '/home/update', type: "GET", data:{text:finalTranscript}});
+        }
+        finalTranscript = '';
+      } else {
+        interimTranscript = transcript;
+        resultDiv.innerHTML = '<i style="color:#ddd;">' + interimTranscript + '</i>';
+      }
+    }
+  }
+
+  let recordActive = true;
+  recognition.start();
+
+  switchBtn.onclick = () => {
+    if (!recordActive) {
+      recognition.start();
+      switchBtn.innerHTML = 'stop';
+      resultDiv.innerHTML = '';
+      recordActive = true;
+    } else {
+      recognition.stop();
+      switchBtn.innerHTML = 'start';
+      recordActive = false;
+    }
+  }
+
+  function checkNotAutoFinished() {
+    if (recordActive) {
+      recognition.start();
+      resultDiv.innerHTML = '';
+    }
+  }
+  setInterval('checkNotAutoFinished()', 60000); // stopボタンが押されていなければ、1分ごとにリスタート
+</script>
